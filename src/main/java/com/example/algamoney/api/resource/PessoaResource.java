@@ -15,6 +15,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
@@ -27,6 +28,7 @@ import org.springframework.web.servlet.support.ServletUriComponentsBuilder;
 import com.example.algamoney.api.event.RecursoCriadoEvent;
 import com.example.algamoney.api.model.Pessoa;
 import com.example.algamoney.api.repository.PessoaRepository;
+import com.example.algamoney.api.service.PessoaService;
 
 @RestController
 @RequestMapping("/pessoas")
@@ -37,6 +39,9 @@ public class PessoaResource {
 
 	@Autowired
 	private ApplicationEventPublisher publisher;
+	
+	@Autowired
+	private PessoaService pessoaService;
 
 	@GetMapping
 	public List<Pessoa> listar() {
@@ -50,7 +55,6 @@ public class PessoaResource {
 
 		publisher.publishEvent(new RecursoCriadoEvent(this, response, pessoaSalva.getCodigo()));
 
-		// Retornando a categoria criada
 		return ResponseEntity.status(HttpStatus.CREATED).body(pessoaSalva);
 	}
 
@@ -71,13 +75,14 @@ public class PessoaResource {
 
 	@PutMapping("/{codigo}")
 	public ResponseEntity<Pessoa> atualizar(@PathVariable Long codigo, @Valid @RequestBody Pessoa pessoa) {
-		return pessoaRepository.findById(codigo).map(pessoaSalva -> {
-			pessoaSalva.setNome(pessoa.getNome());
-			pessoaSalva.setEndereco(pessoa.getEndereco());
-			pessoaSalva.setAtivo(pessoa.getAtivo());
-			Pessoa atualizar = pessoaRepository.save(pessoaSalva);
-			return ResponseEntity.ok().body(atualizar);
-		}).orElse(ResponseEntity.notFound().build());
+		Pessoa pessoaSalva = pessoaService.atualizar(codigo, pessoa);		
+		return ResponseEntity.ok(pessoaSalva);
+	}
+	
+	@PatchMapping("/{codigo}/ativo") 
+	@ResponseStatus(HttpStatus.NO_CONTENT)
+	public void atualizarPropriedadeAtivo(@PathVariable Long codigo, @Valid @RequestBody Boolean ativo) {
+		pessoaService.atualizarPropriedadeAtivo(codigo, ativo);
 	}
 
 }
