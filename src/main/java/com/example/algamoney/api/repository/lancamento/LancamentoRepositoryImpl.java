@@ -17,6 +17,7 @@ import org.springframework.data.domain.Pageable;
 
 import com.example.algamoney.api.model.Lancamento;
 import com.example.algamoney.api.repository.filter.LancamentoFilter;
+import com.example.algamoney.api.repository.projection.ResumoLancamento;
 
 public class LancamentoRepositoryImpl implements LancamentoRepositoryQuery {
 
@@ -40,7 +41,7 @@ public class LancamentoRepositoryImpl implements LancamentoRepositoryQuery {
 		return new PageImpl<>(query.getResultList(), pageable, total(lancamentoFilter));
 	}
 
-	private void adicionarRestricoesDePagincacao(TypedQuery<Lancamento> query, Pageable pageable) {
+	private void adicionarRestricoesDePagincacao(TypedQuery<?> query, Pageable pageable) {
 		int paginaAtual = pageable.getPageNumber();
 		int totalRegistroPorPagina = pageable.getPageSize();
 		int primeiroRegistroDaPagina = paginaAtual * totalRegistroPorPagina;
@@ -78,5 +79,26 @@ public class LancamentoRepositoryImpl implements LancamentoRepositoryQuery {
 			predicates.add(builder.lessThan(root.get("dataVencimento"), lancamentoFilter.getDataVencimentoAte()));
 		}
 		return predicates.toArray(new Predicate[predicates.size()]);
+	}
+
+	@Override
+	public Page<ResumoLancamento> resumir(LancamentoFilter lancamentoFilter, Pageable pageable) {
+		CriteriaBuilder builder = manager.getCriteriaBuilder();
+		CriteriaQuery<ResumoLancamento> criteria = builder.createQuery(ResumoLancamento.class);
+		Root<Lancamento> root = criteria.from(Lancamento.class);
+		criteria.select(builder.construct(ResumoLancamento.class, 
+				root.get("codigo"), root.get("descricao"), root.get("dataVencimento"),
+				root.get("dataPagamento"), root.get("valor"), root.get("tipo"),
+				root.get("categoria").get("nome"), 
+				root.get("pessoa").get("nome")));
+		
+		Predicate[] predicates = criarRestricoes(lancamentoFilter, builder, root);
+		criteria.where(predicates);
+
+		TypedQuery<ResumoLancamento> query = manager.createQuery(criteria);
+		adicionarRestricoesDePagincacao(query, pageable);
+		
+		
+		return new PageImpl<>(query.getResultList(), pageable, total(lancamentoFilter));
 	}
 }
